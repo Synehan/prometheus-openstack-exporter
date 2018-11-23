@@ -46,7 +46,8 @@ class OSClient(object):
             user_domain,
             region,
             timeout,
-            retries):
+            retries,
+            interface):
         self.keystone_url = keystone_url
         self.password = password
         self.tenant_name = tenant_name
@@ -55,6 +56,7 @@ class OSClient(object):
         self.region = region
         self.timeout = timeout
         self.retries = retries
+        self.interface = interface
         self.token = None
         self.valid_until = None
         self.session = requests.Session()
@@ -137,7 +139,7 @@ class OSClient(object):
                 'name': item['name'],
                 'region': self.region,
                 'service_type': item['type'],
-                'url': internalURL if internalURL is not None else publicURL,
+                'url': internalURL if self.interface == "internal" else publicURL,
                 'admin_url': adminURL,
             })
 
@@ -236,6 +238,9 @@ class OSClient(object):
         if service == 'neutron':
             endpoint = 'v2.0/agents'
             entry = 'agents'
+        elif service == 'heat':
+            endpoint = 'services'
+            entry = 'services'
         else:
             endpoint = 'os-services'
             entry = 'services'
@@ -267,6 +272,17 @@ class OSClient(object):
                             data['state'] = 'disabled'
                         else:
                             data['state'] = 'up' if val['alive'] else 'down'
+                    elif service == 'heat':
+                        if val['status'] == 'disabled':
+                            data['state'] = 'disabled'
+                        elif val['status'] == 'up' or val['status'] == 'down':
+                            data['state'] = val['status']
+                        else:
+                            data['state'] = 'unknown'
+                            msg = "Unknown state for {} workers:{}".format(
+                                service, val['state'])
+                            logger.warning(msg)
+                            continue
                     else:
                         if val['status'] == 'disabled':
                             data['state'] = 'disabled'

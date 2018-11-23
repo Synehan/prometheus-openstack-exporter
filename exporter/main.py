@@ -27,6 +27,7 @@ from oscache import OSCache
 from check_os_api import CheckOSApi
 from neutron_agents import NeutronAgentStats
 from nova_services import NovaServiceStats
+from heat_services import HeatServiceStats
 from cinder_services import CinderServiceStats
 from hypervisor_stats import HypervisorStats
 
@@ -124,6 +125,9 @@ if __name__ == '__main__':
         'OS_RAM_OC_RATIO', float(
             os.getenv(
                 'OS_RAM_OC_RATIO', 1)))
+    os_interface = config.get(
+        'OS_INTERFACE',
+        os.getenv('OS_INTERFACE'))
 
     osclient = OSClient(
         os_keystone_url,
@@ -133,7 +137,8 @@ if __name__ == '__main__':
         os_user_domain,
         os_region,
         os_timeout,
-        os_retries)
+        os_retries,
+        os_interface)
     oscache = OSCache(os_polling_interval, os_region)
     collectors.append(oscache)
 
@@ -145,6 +150,8 @@ if __name__ == '__main__':
     collectors.append(cinder_service_stats)
     nova_service_stats = NovaServiceStats(oscache, osclient)
     collectors.append(nova_service_stats)
+    heat_service_stats = HeatServiceStats(oscache, osclient)
+    collectors.append(heat_service_stats)
     hypervisor_stats = HypervisorStats(
         oscache,
         osclient,
