@@ -30,6 +30,7 @@ from nova_services import NovaServiceStats
 from heat_services import HeatServiceStats
 from cinder_services import CinderServiceStats
 from hypervisor_stats import HypervisorStats
+from ip_stats import NeutronIpStats
 
 import logging
 logging.basicConfig(
@@ -127,7 +128,7 @@ if __name__ == '__main__':
                 'OS_RAM_OC_RATIO', 1)))
     os_interface = config.get(
         'OS_INTERFACE',
-        os.getenv('OS_INTERFACE'))
+        os.getenv('OS_INTERFACE', "public"))
 
     osclient = OSClient(
         os_keystone_url,
@@ -158,6 +159,8 @@ if __name__ == '__main__':
         os_cpu_overcomit_ratio,
         os_ram_overcomit_ratio)
     collectors.append(hypervisor_stats)
+    ip_stats = NeutronIpStats(oscache, osclient)
+    collectors.append(ip_stats)
 
     oscache.start()
 
