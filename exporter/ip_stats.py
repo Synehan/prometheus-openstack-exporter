@@ -14,11 +14,7 @@ class NeutronIpStats(OSBase):
 
         status per service broken down by state
     """
-    VALUE_MAP = {
-        ''
-    }
-
-
+    
     def __init__(
             self,
             oscache,
@@ -29,7 +25,7 @@ class NeutronIpStats(OSBase):
         cache_stats = []
         r = self.osclient.get('neutron', 'v2.0/network-ip-availabilities')
         if not r:
-            logger.warning("Could not get floating ip availabilities")
+            logger.warning("Could not get ip availabilities")
         else:
             network_ip_availabilities_list = r.json().get('network_ip_availabilities', [])
             for network in network_ip_availabilities_list:

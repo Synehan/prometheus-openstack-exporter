@@ -31,6 +31,7 @@ from heat_services import HeatServiceStats
 from cinder_services import CinderServiceStats
 from hypervisor_stats import HypervisorStats
 from ip_stats import NeutronIpStats
+from router_stats import RouterStats
 
 import logging
 logging.basicConfig(
@@ -129,6 +130,10 @@ if __name__ == '__main__':
     os_interface = config.get(
         'OS_INTERFACE',
         os.getenv('OS_INTERFACE', "public"))
+    os_max_number_router = config.get(
+        'MAX_NUMBER_ROUTER', int(
+            os.getenv(
+                'MAX_NUMBER_ROUTER', 2)))
 
     osclient = OSClient(
         os_keystone_url,
@@ -161,6 +166,8 @@ if __name__ == '__main__':
     collectors.append(hypervisor_stats)
     ip_stats = NeutronIpStats(oscache, osclient)
     collectors.append(ip_stats)
+    router_stats = RouterStats(oscache, osclient, os_max_number_router)
+    collectors.append(router_stats)
 
     oscache.start()
 
