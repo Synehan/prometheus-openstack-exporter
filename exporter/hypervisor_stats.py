@@ -48,6 +48,7 @@ class HypervisorStats(OSBase):
     def build_cache_data(self):
         cache_stats = []
         nova_aggregates = {}
+        cpu_ratio_per_hosts = {}
         r = self.osclient.get('nova', 'os-aggregates')
         if not r:
             logger.warning("Could not get nova aggregates")
@@ -59,6 +60,9 @@ class HypervisorStats(OSBase):
                     'hosts': [h.split('.')[0] for h in agg['hosts']],
                     'metrics': {'free_vcpus': 0},
                 }
+                if 'cpu_allocation_ratio' in agg['metadata']:
+                    for h in agg['hosts']:
+                        cpu_ratio_per_hosts[h] = agg['metadata']['cpu_allocation_ratio']
                 nova_aggregates[agg['name']]['metrics'].update(
                     {v: 0 for v in self.VALUE_MAP.values()}
                 )
@@ -83,21 +87,26 @@ class HypervisorStats(OSBase):
                 total_stats[v] += m_val
                 for agg in nova_aggregates.keys():
                     agg_hosts = nova_aggregates[agg]['hosts']
-                    if host in agg_hosts:
+                    if stats['service']['host'] in agg_hosts:
                         nova_aggregates[agg]['metrics'][v] += m_val
             m_vcpus = stats.get('vcpus', 0)
             m_vcpus_used = stats.get('vcpus_used', 0)
-            free = (int(self.cpu_overcommit_ratio * m_vcpus)) - m_vcpus_used
+            if stats['service']['host'] in cpu_ratio_per_hosts:
+                cpu_ratio = int(cpu_ratio_per_hosts[stats['service']['host']])
+            else:
+                cpu_ratio = self.cpu_overcommit_ratio
+            free = (int(cpu_ratio * m_vcpus)) - m_vcpus_used
             cache_stats.append({
                 'stat_name': 'free_vcpus',
                 'stat_value': free,
                 'host': host,
+                'cpu_ratio': cpu_ratio
             })
             total_stats['free_vcpus'] += free
             for agg in nova_aggregates.keys():
                 agg_hosts = nova_aggregates[agg]['hosts']
-                if host in agg_hosts:
-                    free = ((int(self.extra_config['cpu_ratio'] *
+                if stats['service']['host'] in agg_hosts:
+                    free = ((int(cpu_ratio *
                                  m_vcpus)) -
                             m_vcpus_used)
                     nova_aggregates[agg]['metrics']['free_vcpus'] += free
@@ -135,7 +144,7 @@ class HypervisorStats(OSBase):
 
     def get_stats(self):
         registry = CollectorRegistry()
-        labels = ['region', 'host', 'aggregate', 'aggregate_id']
+        labels = ['region', 'host', 'aggregate', 'aggregate_id', 'cpu_ratio']
         hypervisor_stats_cache = self.get_cache_data()
         for hypervisor_stat in hypervisor_stats_cache:
             stat_gauge = Gauge(
@@ -147,6 +156,7 @@ class HypervisorStats(OSBase):
             label_values = [self.osclient.region,
                             hypervisor_stat.get('host', ''),
                             hypervisor_stat.get('aggregate', ''),
-                            hypervisor_stat.get('aggregate_id', '')]
+                            hypervisor_stat.get('aggregate_id', ''),
+                            hypervisor_stat.get('cpu_ratio', '')]
             stat_gauge.labels(*label_values).set(hypervisor_stat['stat_value'])
         return generate_latest(registry)
