@@ -46,6 +46,14 @@ class NeutronIpStats(OSBase):
                         'network': network['network_name'],
                         'network_id': network['network_id']                     
                     })
+                    cache_stats.append({
+                        'stat_name': 'used_ips_percent',
+                        'stat_value': (100 * subnet['used_ips']) / subnet['total_ips'],
+                        'subnet': subnet['subnet_name'],
+                        'subnet_id': subnet['subnet_id'],
+                        'network': network['network_name'],
+                        'network_id': network['network_id']
+                    })
         return cache_stats
     
     def get_cache_key(self):

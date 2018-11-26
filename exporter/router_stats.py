@@ -36,6 +36,10 @@ class RouterStats(OSBase):
             router_state = {}
             router_state.update({'multiple_active': 0, 'one_active': 0, 'more_than_max': 0, 'same_as_max': 0, 'less_than_max': 0})
 
+            count_status = collections.Counter(d['status'] for d in routers)
+            total_routers = sum(count_status[item] for item in count_status)
+            router_up = collections.Counter(d['admin_state_up'] for d in routers)
+
             for router in routers:
                 t = self.osclient.get('neutron', 'v2.0/routers/'+router['id']+'/l3-agents')
                 if not t:
@@ -55,30 +59,41 @@ class RouterStats(OSBase):
                         router_state['less_than_max'] += 1
 
             for k, v in router_state.iteritems():
+                prct = (100 * v) / total_routers
                 cache_stats.append({
-                    'stat_name': 'total_router_with_'+k,
+                    'stat_name': 'router_with_'+k+'_total',
                     'stat_value': v
                 })
-            
-            count_status = collections.Counter(d['status'] for d in routers)
+                cache_stats.append({
+                    'stat_name': 'router_with_'+k+'_percent',
+                    'stat_value': prct
+                })
 
             for k, v in count_status.iteritems():
+                prct = (100 * v) / total_routers
                 cache_stats.append({
-                    'stat_name': 'total_router_'+k.lower(),
+                    'stat_name': 'router_'+k.lower()+'_total',
                     'stat_value': v
                 })
-
-            router_up = collections.Counter(d['admin_state_up'] for d in routers)
+                cache_stats.append({
+                    'stat_name': 'router_'+k.lower()+'_percent',
+                    'stat_value': prct
+                })
 
             for k, v in router_up.iteritems():
+                prct = (100 * v) / total_routers
                 cache_stats.append({
-                    'stat_name': 'total_router_admin_up' if k else 'total_router_admin_down',
+                    'stat_name': 'router_admin_up_total' if k else 'router_admin_down_total',
                     'stat_value': v
+                })
+                cache_stats.append({
+                    'stat_name': 'router_admin_up_percent' if k else 'router_admin_down_percent',
+                    'stat_value': prct
                 })
             
             cache_stats.append({
-                'stat_name': 'total_router',
-                'stat_value': sum(count_status[item] for item in count_status) 
+                'stat_name': 'router_total',
+                'stat_value': total_routers
             })
 
 
